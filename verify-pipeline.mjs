@@ -17,13 +17,26 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = dirname(fileURLToPath(import.meta.url));
+
+// ── Simple .env loader ──────────────────────────────────────────
+function loadEnv() {
+  const envPath = join(ROOT, '.env');
+  if (existsSync(envPath)) {
+    const lines = readFileSync(envPath, 'utf-8').split('\n');
+    for (const line of lines) {
+      const match = line.match(/^\s*([\w_-]+)\s*=\s*["']?(.*?)["']?\s*$/);
+      if (match) process.env[match[1]] = match[2];
+    }
+  }
+}
+
+loadEnv();
 
 // ── Vault path resolution ───────────────────────────────────────
 function resolveVaultPath() {
   if (process.env.CAREER_OPS_VAULT_PATH) return process.env.CAREER_OPS_VAULT_PATH;
-  const home = process.env.HOME || process.env.USERPROFILE || '';
-  return join(home, 'Library/Mobile Documents/iCloud~md~obsidian/Documents/Life_OS/10_Projects/02_Job_Hunt_2026');
+  return './vault'; // Generic default
 }
 
 const VAULT_BASE = resolveVaultPath();

@@ -4,6 +4,17 @@ import os
 import re
 from datetime import datetime
 
+# Simple .env loader
+def load_env():
+    env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                match = re.match(r'^\s*([\w_-]+)\s*=\s*["\'"]?(.*?)["\'"]?\s*$', line)
+                if match:
+                    os.environ[match.group(1)] = match.group(2)
+
+load_env()
 VAULT_PATH = os.environ.get('OBSIDIAN_VAULT_PATH', './vault')
 JD_POOL = os.path.join(VAULT_PATH, '10_JD_Pool')
 
