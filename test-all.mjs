@@ -61,10 +61,7 @@ console.log('\n2. Script execution (graceful on empty data)');
 
 const scripts = [
   { name: 'cv-sync-check.mjs', expectExit: 1, allowFail: true }, // fails without cv.md (normal in repo)
-  { name: 'verify-pipeline.mjs', expectExit: 0 },
-  { name: 'normalize-statuses.mjs', expectExit: 0 },
-  { name: 'dedup-tracker.mjs', expectExit: 0 },
-  { name: 'merge-tracker.mjs', expectExit: 0 },
+  { name: 'verify-pipeline.mjs', expectExit: 0, allowFail: true }, // requires a configured Obsidian vault
   { name: 'update-system.mjs check', expectExit: 0 },
 ];
 
@@ -100,8 +97,9 @@ console.log('\n4. Data contract validation');
 // Check system files exist
 const systemFiles = [
   'CLAUDE.md', 'VERSION', 'DATA_CONTRACT.md',
-  'modes/_shared.md', 'modes/_profile.template.md',
+  'modes/_shared.md', 'modes/_profile.template.md', 'modes/obsidian-bridge.md',
   'modes/oferta.md', 'modes/pdf.md', 'modes/scan.md',
+  'modes/discover-companies.md', 'modes/interview-prep.md', 'modes/patterns.md',
   'templates/states.yml', 'templates/cv-template.html',
   '.claude/skills/career-ops/SKILL.md',
 ];
@@ -116,7 +114,7 @@ for (const f of systemFiles) {
 
 // Check user files are NOT tracked (gitignored)
 const userFiles = [
-  'config/profile.yml', 'modes/_profile.md', 'portals.yml',
+  'config/profile.yml', 'modes/_profile.md',
 ];
 for (const f of userFiles) {
   const tracked = run(`git ls-files ${f}`);
@@ -182,8 +180,9 @@ if (!absPathResult) {
 console.log('\n7. Mode file integrity');
 
 const expectedModes = [
-  '_shared.md', '_profile.template.md', 'oferta.md', 'pdf.md', 'scan.md',
+  '_shared.md', '_profile.template.md', 'obsidian-bridge.md', 'oferta.md', 'pdf.md', 'scan.md',
   'batch.md', 'apply.md', 'auto-pipeline.md', 'contacto.md', 'deep.md',
+  'discover-companies.md', 'interview-prep.md', 'patterns.md',
   'ofertas.md', 'pipeline.md', 'project.md', 'tracker.md', 'training.md',
 ];
 
@@ -209,9 +208,10 @@ console.log('\n8. CLAUDE.md integrity');
 
 const claude = readFile('CLAUDE.md');
 const requiredSections = [
-  'Data Contract', 'Update Check', 'Ethical Use',
-  'Offer Verification', 'Canonical States', 'TSV Format',
-  'First Run', 'Onboarding',
+  'Data Contract', 'Ethical Use',
+  'Offer Verification', 'Skill Delegation',
+  'Obsidian', 'First Run', 'Onboarding',
+  'Stack and Conventions',
 ];
 
 for (const section of requiredSections) {
@@ -222,9 +222,55 @@ for (const section of requiredSections) {
   }
 }
 
-// ── 9. VERSION FILE ─────────────────────────────────────────────
+// ── 9. OBSIDIAN-ONLY CONTRACT ───────────────────────────────────
 
-console.log('\n9. Version file');
+console.log('\n9. Obsidian-only contract');
+
+const forbiddenActiveRefs = [
+  {
+    pattern: 'applications.md',
+    label: 'legacy applications.md references',
+    excludes: [
+      'docs/ARCHITECTURE.md',
+      'DATA_CONTRACT.md',
+      'modes/de/DEPRECATED.md',
+      'modes/fr/DEPRECATED.md',
+      'modes/pt/DEPRECATED.md',
+      'test-all.mjs',
+    ],
+  },
+  {
+    pattern: 'portals.yml',
+    label: 'legacy portals.yml references',
+    excludes: [
+      'DATA_CONTRACT.md',
+      'README.es.md',
+      'modes/discover-companies.md',
+      'templates/portals.example.yml',
+      'test-all.mjs',
+    ],
+  },
+];
+
+for (const { pattern, label, excludes } of forbiddenActiveRefs) {
+  const result = run(`grep -RIn "${pattern}" . --exclude-dir=node_modules --exclude-dir=.git`);
+  let found = false;
+  if (result) {
+    for (const line of result.split('\n').filter(Boolean)) {
+      const file = line.split(':')[0].replace(/^\.\//, '');
+      if (excludes.some(exclude => file === exclude || file.startsWith(exclude))) continue;
+      fail(`Found ${label}: ${line.slice(0, 140)}`);
+      found = true;
+    }
+  }
+  if (!found) {
+    pass(`No active ${label}`);
+  }
+}
+
+// ── 10. VERSION FILE ────────────────────────────────────────────
+
+console.log('\n10. Version file');
 
 if (fileExists('VERSION')) {
   const version = readFile('VERSION').trim();

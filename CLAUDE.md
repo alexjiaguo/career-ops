@@ -1,312 +1,214 @@
-# Career-Ops -- AI Job Search Pipeline
+# CLAUDE.md
 
-## Origin
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This system was built and used by [santifer](https://santifer.io) to evaluate 740+ job offers, generate 100+ tailored CVs, and land a Head of Applied AI role. The archetypes, scoring logic, negotiation scripts, and proof point structure all reflect his specific career search in AI/automation roles.
+## Career-Ops — Obsidian-Native AI Job Search Pipeline
 
-The portfolio that goes with this system is also open source: [cv-santiago](https://github.com/santifer/cv-santiago).
+### Origin
 
-**It will work out of the box, but it's designed to be made yours.** If the archetypes don't match your career, the modes are in the wrong language, or the scoring doesn't fit your priorities -- just ask. You (AI Agent) can edit the user's files. The user says "change the archetypes to data engineering roles" and you do it. That's the whole point.
+This system is adapted from [santifer/career-ops](https://github.com/santifer/career-ops), customized for an Obsidian-native workflow with dynamic company discovery, APAC/China job board integration, and delegation to the user's own resume and interview prep skills.
+
+## Commands
+
+| Command | Purpose |
+| ------- | ------- |
+| `npm install` | Install dependencies (playwright) |
+| `npx playwright install chromium` | Install browser for PDF generation and portal scanning |
+| `npm run doctor` | Validate all prerequisites (Node >= 18, Playwright, cv.md, profile, fonts) |
+| `npm run pdf` | Generate PDF from HTML: `node generate-pdf.mjs <input.html> <output.pdf> [--format=letter\|a4]` |
+| `npm run verify` | Run pipeline integrity checks (validates JD files in Obsidian vault) |
+| `npm run test` | Run full test suite (syntax, data contract, modes, paths) |
+| `npm run liveness` | Check if tracked job URLs are still live |
+| `npm run update:check` | Check for upstream career-ops updates |
+| `npm run update` | Apply upstream updates (system-layer files only) |
+| `npm run rollback` | Rollback last update |
+| `bash batch/batch-runner.sh` | Run batch evaluation of URLs in `batch/batch-input.tsv` |
+| `source .venv/bin/activate && pip install -r requirements.txt` | Install Python dependencies (JobSpy) |
+| `source .venv/bin/activate && python3 jobspy-scan.py --search-term "..." --location "..."` | Scan job boards via JobSpy |
+| `node linkedin-scan.mjs --keyword "..." --location "..." --limit 25` | Scan LinkedIn via linkedin-jobs-api |
+| `cd dashboard && go build -o career-dashboard . && ./career-dashboard --path ..` | Build and run the Go TUI dashboard |
+
+## Architecture
+
+### Mode Dispatch
+
+User input is classified and routed to a mode file in `modes/`. Each mode is a self-contained markdown prompt that defines a multi-step workflow. The loading order matters:
+
+1. `modes/_shared.md` — System-level scoring rules, archetype definitions, global rules, tool config (auto-updatable)
+2. `modes/_profile.md` — User's archetypes, narrative, negotiation scripts, comp targets (never auto-updated, overrides `_shared.md`)
+3. The specific mode file (e.g., `modes/oferta.md`, `modes/scan.md`)
+
+All modes also read `modes/obsidian-bridge.md` for vault path resolution and frontmatter conventions.
+
+### Two-Layer Data Contract
+
+Files are split into **User Layer** (never auto-updated) and **System Layer** (safe to replace with upstream). See `DATA_CONTRACT.md` for the complete list. The critical rule: user customizations (archetypes, narrative, comp targets) go in `modes/_profile.md` or `config/profile.yml`, NEVER in `modes/_shared.md`.
+
+### Skill Delegation
+
+Three modes delegate to external Claude Code skills rather than implementing their own workflows:
+
+| Mode | Delegates to | Fallback |
+| ---- | ------------ | -------- |
+| `pdf` | `tailored-resume-generator` skill | Built-in `generate-pdf.mjs` + `templates/cv-template.html` |
+| `interview-prep` | `interview-prep` + `mock-interview-transcript` skills | Built-in interview research workflow |
+| `interview-prep` (case studies) | `pm-vibe-coding` skill | None |
+
+Each delegation mode gathers context (JD, CV, evaluation keywords), invokes the skill, saves output to the Obsidian vault, and updates JD frontmatter.
+
+### Obsidian Bases Tracker
+
+The tracker at `{vault}/00_Strategy/Tracker_2026.base` is an Obsidian Bases database that reads YAML frontmatter from files in `{vault}/10_JD_Pool/`. There is no separate tracker file — updating a JD file's frontmatter (`status`, `score`, `Tier`, `pdf_generated`) automatically updates the tracker. All modes that create or evaluate JDs write to `10_JD_Pool/` files directly.
 
 ## Data Contract (CRITICAL)
 
 There are two layers. Read `DATA_CONTRACT.md` for the full list.
 
 **User Layer (NEVER auto-updated, personalization goes HERE):**
-- `cv.md`, `config/profile.yml`, `modes/_profile.md`, `article-digest.md`, `portals.yml`
-- `data/*`, `reports/*`, `output/*`, `interview-prep/*`
+- `cv.md`, `config/profile.yml`, `modes/_profile.md`, `article-digest.md`
+- Obsidian vault: `{vault}/10_JD_Pool/*`, `{vault}/20_Tailored_CV/*`, `{vault}/40_Interviewing/*`
+- `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml`
+- `{vault}/99_The_Treasure_Vault/01_Career_Ops/target-companies.yml`
+- `interview-prep/story-bank.md`
 
 **System Layer (auto-updatable, DON'T put user data here):**
 - `modes/_shared.md`, `modes/oferta.md`, all other modes
-- `CLAUDE.md`, `*.mjs` scripts, `dashboard/*`, `templates/*`, `batch/*`
+- `CLAUDE.md`, `*.mjs` scripts, `templates/*`
 
-**THE RULE: When the user asks to customize anything (archetypes, narrative, negotiation scripts, proof points, location policy, comp targets), ALWAYS write to `modes/_profile.md` or `config/profile.yml`. NEVER edit `modes/_shared.md` for user-specific content.** This ensures system updates don't overwrite their customizations.
+**THE RULE: When the user asks to customize anything (archetypes, narrative, negotiation scripts, proof points, location policy, comp targets), ALWAYS write to `modes/_profile.md` or `config/profile.yml`. NEVER edit `modes/_shared.md` for user-specific content.**
 
-## Update Check
+## Obsidian Integration
 
-On the first message of each session, run the update checker silently:
+**This system reads and writes to the user's Obsidian vault.** Read `modes/obsidian-bridge.md` for the complete integration spec.
 
-```bash
-node update-system.mjs check
-```
+**Vault base path:** Read from `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml` at runtime. Alternatively, the env var `CAREER_OPS_VAULT_PATH` can be set to override the default. **Never hardcode an absolute vault path in code or docs.**
 
-Parse the JSON output:
-- `{"status": "update-available", "local": "1.0.0", "remote": "1.1.0", "changelog": "..."}` → tell the user:
-  > "career-ops update available (v{local} → v{remote}). Your data (CV, profile, tracker, reports) will NOT be touched. Want me to update?"
-  If yes → run `node update-system.mjs apply`. If no → run `node update-system.mjs dismiss`.
-- `{"status": "up-to-date"}` → say nothing
-- `{"status": "dismissed"}` → say nothing
-- `{"status": "offline"}` → say nothing
+### Key Vault Folders
 
-The user can also say "check for updates" or "update career-ops" at any time to force a check.
-To rollback: `node update-system.mjs rollback`
+| Folder | Purpose |
+| ------ | ------- |
+| `00_Strategy/` | Career goals, Bases tracker |
+| `10_JD_Pool/` | All discovered JDs (one file each with YAML frontmatter) |
+| `20_Tailored_CV/` | Resume output (from `tailored-resume-generator` skill) |
+| `30_Applied/` | Submitted applications |
+| `40_Interviewing/` | Interview prep (from `interview-prep` skill) |
+| `50_Offers/` | Received offers |
+| `90_Archived_Roles/` | Closed/rejected roles |
+| `99_The_Treasure_Vault/01_Career_Ops/` | System config, company list, scan history |
+
+### Tracker
+
+The tracker is `00_Strategy/Tracker_2026.base` — an Obsidian Bases database that automatically reads frontmatter from files in `10_JD_Pool/`. **Do NOT maintain a separate `applications.md`.** Update JD file frontmatter and Bases picks it up.
 
 ## What is career-ops
 
-AI-powered job search automation built on Claude Code: pipeline tracking, offer evaluation, CV generation, portal scanning, batch processing.
+AI-powered job search automation: pipeline tracking, offer evaluation, dynamic company discovery, portal scanning, with resume and interview prep delegated to the user's own specialized skills.
 
 ### Main Files
 
 | File | Function |
-|------|----------|
-| `data/applications.md` | Application tracker |
-| `data/pipeline.md` | Inbox of pending URLs |
-| `data/scan-history.tsv` | Scanner dedup history |
-| `portals.yml` | Query and company config |
-| `templates/cv-template.html` | HTML template for CVs |
-| `generate-pdf.mjs` | Playwright: HTML to PDF |
-| `article-digest.md` | Compact proof points from portfolio (optional) |
-| `interview-prep/story-bank.md` | Accumulated STAR+R stories across evaluations |
-| `interview-prep/{company}-{role}.md` | Company-specific interview intel reports |
-| `analyze-patterns.mjs` | Pattern analysis script (JSON output) |
-| `reports/` | Evaluation reports (format: `{###}-{company-slug}-{YYYY-MM-DD}.md`) |
+| ---- | -------- |
+| `{vault}/10_JD_Pool/*.md` | JD files with YAML frontmatter (tracker source) |
+| `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml` | User targeting config |
+| `{vault}/99_The_Treasure_Vault/01_Career_Ops/target-companies.yml` | Dynamic company list |
+| `{vault}/99_The_Treasure_Vault/01_Career_Ops/scan-history.tsv` | Scanner dedup history |
+| `cv.md` | Canonical CV |
+| `article-digest.md` | Detailed proof points (optional) |
+| `interview-prep/story-bank.md` | Accumulated STAR+R stories |
+| `config/profile.yml` | Candidate identity and targets |
+| `modes/_profile.md` | User archetypes, narrative, negotiation |
 
-### OpenCode Commands
+### Skill Modes
 
-When using [OpenCode](https://opencode.ai), the following slash commands are available (defined in `.opencode/commands/`):
-
-| Command | Claude Code Equivalent | Description |
-|---------|------------------------|-------------|
-| `/career-ops` | `/career-ops` | Show menu or evaluate JD with args |
-| `/career-ops-pipeline` | `/career-ops pipeline` | Process pending URLs from inbox |
-| `/career-ops-evaluate` | `/career-ops oferta` | Evaluate job offer (A-F scoring) |
-| `/career-ops-compare` | `/career-ops ofertas` | Compare and rank multiple offers |
-| `/career-ops-contact` | `/career-ops contacto` | LinkedIn outreach (find contacts + draft) |
-| `/career-ops-deep` | `/career-ops deep` | Deep company research |
-| `/career-ops-pdf` | `/career-ops pdf` | Generate ATS-optimized CV |
-| `/career-ops-training` | `/career-ops training` | Evaluate course/cert against goals |
-| `/career-ops-project` | `/career-ops project` | Evaluate portfolio project idea |
-| `/career-ops-tracker` | `/career-ops tracker` | Application status overview |
-| `/career-ops-apply` | `/career-ops apply` | Live application assistant |
-| `/career-ops-scan` | `/career-ops scan` | Scan portals for new offers |
-| `/career-ops-batch` | `/career-ops batch` | Batch processing with parallel workers |
-| `/career-ops-patterns` | `/career-ops patterns` | Analyze rejection patterns and improve targeting |
-
-**Note:** OpenCode commands invoke the same `.claude/skills/career-ops/SKILL.md` skill used by Claude Code. The `modes/*` files are shared between both platforms.
+| If the user... | Mode | Notes |
+| -------------- | ---- | ----- |
+| Pastes JD or URL | `auto-pipeline` | Evaluate + resume + tracker update |
+| Asks to evaluate offer | `oferta` | A-F scoring, inline in JD file |
+| Asks to compare offers | `ofertas` | Compare and rank multiple JDs |
+| Wants to discover companies | `discover-companies` | **NEW** — Dynamic company list |
+| Searches for new offers | `scan` | **UPDATED** — APAC/China boards |
+| Wants to generate resume | `pdf` | **DELEGATED** → `tailored-resume-generator` skill |
+| Preps for interview | `interview-prep` | **DELEGATED** → `interview-prep` + `mock-interview-transcript` skills |
+| Wants LinkedIn outreach | `contacto` | LinkedIn outreach message |
+| Asks for company research | `deep` | Deep company research |
+| Evaluates a course/cert | `training` | Training evaluation |
+| Evaluates portfolio project | `project` | Project evaluation |
+| Asks about rejection patterns | `patterns` | Analyze and improve targeting |
+| Fills out application form | `apply` | Application assistant |
 
 ### First Run — Onboarding (IMPORTANT)
 
 **Before doing ANYTHING else, check if the system is set up.** Run these checks silently every time a session starts:
 
 1. Does `cv.md` exist?
-2. Does `config/profile.yml` exist (not just profile.example.yml)?
-3. Does `modes/_profile.md` exist (not just _profile.template.md)?
-4. Does `portals.yml` exist (not just templates/portals.example.yml)?
+2. Does `config/profile.yml` exist?
+3. Does `modes/_profile.md` exist?
+4. Does `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml` exist?
 
-If `modes/_profile.md` is missing, copy from `modes/_profile.template.md` silently. This is the user's customization file — it will never be overwritten by updates.
+If `modes/_profile.md` is missing, copy from `modes/_profile.template.md` silently.
 
-**If ANY of these is missing, enter onboarding mode.** Do NOT proceed with evaluations, scans, or any other mode until the basics are in place. Guide the user step by step:
+**If ANY of these is missing, enter onboarding mode.** Guide the user step by step.
 
 #### Step 1: CV (required)
-If `cv.md` is missing, ask:
-> "I don't have your CV yet. You can either:
-> 1. Paste your CV here and I'll convert it to markdown
-> 2. Paste your LinkedIn URL and I'll extract the key info
-> 3. Tell me about your experience and I'll draft a CV for you
->
-> Which do you prefer?"
-
-Create `cv.md` from whatever they provide. Make it clean markdown with standard sections (Summary, Experience, Projects, Education, Skills).
+If `cv.md` is missing, ask the user to provide their CV (paste, LinkedIn URL, or describe experience).
 
 #### Step 2: Profile (required)
-If `config/profile.yml` is missing, copy from `config/profile.example.yml` and then ask:
-> "I need a few details to personalize the system:
-> - Your full name and email
-> - Your location and timezone
-> - What roles are you targeting? (e.g., 'Senior Backend Engineer', 'AI Product Manager')
-> - Your salary target range
->
-> I'll set everything up for you."
+If `config/profile.yml` is missing, copy from `config/profile.example.yml` and ask for details.
 
-Fill in `config/profile.yml` with their answers. For archetypes and targeting narrative, store the user-specific mapping in `modes/_profile.md` or `config/profile.yml` rather than editing `modes/_shared.md`.
+#### Step 3: Obsidian Config (required)
+If `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml` is missing, create it from the template with the user's targeting preferences.
 
-#### Step 3: Portals (recommended)
-If `portals.yml` is missing:
-> "I'll set up the job scanner with 45+ pre-configured companies. Want me to customize the search keywords for your target roles?"
+#### Step 4: Company Discovery (recommended)
+If `target-companies.yml` is empty, run `discover-companies` mode to generate a dynamic company list.
 
-Copy `templates/portals.example.yml` → `portals.yml`. If they gave target roles in Step 2, update `title_filter.positive` to match.
-
-#### Step 4: Tracker
-If `data/applications.md` doesn't exist, create it:
-```markdown
-# Applications Tracker
-
-| # | Date | Company | Role | Score | Status | PDF | Report | Notes |
-|---|------|---------|------|-------|--------|-----|--------|-------|
-```
-
-#### Step 5: Get to know the user (important for quality)
-
-After the basics are set up, proactively ask for more context. The more you know, the better your evaluations will be:
-
-> "The basics are ready. But the system works much better when it knows you well. Can you tell me more about:
-> - What makes you unique? What's your 'superpower' that other candidates don't have?
-> - What kind of work excites you? What drains you?
-> - Any deal-breakers? (e.g., no on-site, no startups under 20 people, no Java shops)
-> - Your best professional achievement — the one you'd lead with in an interview
-> - Any projects, articles, or case studies you've published?
->
-> The more context you give me, the better I filter. Think of it as onboarding a recruiter — the first week I need to learn about you, then I become invaluable."
-
-Store any insights the user shares in `config/profile.yml` (under narrative), `modes/_profile.md`, or in `article-digest.md` if they share proof points. Do not put user-specific archetypes or framing into `modes/_shared.md`.
-
-**After every evaluation, learn.** If the user says "this score is too high, I wouldn't apply here" or "you missed that I have experience in X", update your understanding in `modes/_profile.md`, `config/profile.yml`, or `article-digest.md`. The system should get smarter with every interaction without putting personalization into system-layer files.
+#### Step 5: Get to know the user
+Ask about superpower, deal-breakers, best achievement, proof points. Store in `config/profile.yml` and `modes/_profile.md`.
 
 #### Step 6: Ready
-Once all files exist, confirm:
-> "You're all set! You can now:
-> - Paste a job URL to evaluate it
-> - Run `/career-ops scan` (or `/career-ops-scan` if using OpenCode) to search portals
-> - Run `/career-ops` to see all commands
->
-> Everything is customizable — just ask me to change anything.
->
-> Tip: Having a personal portfolio dramatically improves your job search. If you don't have one yet, the author's portfolio is also open source: github.com/santifer/cv-santiago — feel free to fork it and make it yours."
+```
+You're all set! You can now:
+- Paste a job URL to evaluate it
+- Run discover-companies to build your target list
+- Run scan to find new positions
+- Run interview-prep for any company
 
-Then suggest automation:
-> "Want me to scan for new offers automatically? I can set up a recurring scan every few days so you don't miss anything. Just say 'scan every 3 days' and I'll configure it."
-
-If the user accepts, use the `/loop` or `/schedule` skill (if available) to set up a recurring `/career-ops scan` (or `/career-ops-scan` if using OpenCode). If those aren't available, suggest adding a cron job or remind them to run `/career-ops scan` (or `/career-ops-scan` if using OpenCode) periodically.
-
-### Personalization
-
-This system is designed to be customized by YOU (AI Agent). When the user asks you to change archetypes, translate modes, adjust scoring, add companies, or modify negotiation scripts -- do it directly. You read the same files you use, so you know exactly what to edit.
-
-**Common customization requests:**
-- "Change the archetypes to [backend/frontend/data/devops] roles" → edit `modes/_profile.md` or `config/profile.yml`
-- "Translate the modes to English" → edit all files in `modes/`
-- "Add these companies to my portals" → edit `portals.yml`
-- "Update my profile" → edit `config/profile.yml`
-- "Change the CV template design" → edit `templates/cv-template.html`
-- "Adjust the scoring weights" → edit `modes/_profile.md` for user-specific weighting, or edit `modes/_shared.md` and `batch/batch-prompt.md` only when changing the shared system defaults for everyone
-
-### Language Modes
-
-Default modes are in `modes/` (English). Additional language-specific modes are available:
-
-- **German (DACH market):** `modes/de/` — native German translations with DACH-specific vocabulary (13. Monatsgehalt, Probezeit, Kündigungsfrist, AGG, Tarifvertrag, etc.). Includes `_shared.md`, `angebot.md` (evaluation), `bewerben.md` (apply), `pipeline.md`.
-- **French (Francophone market):** `modes/fr/` — native French translations with France/Belgium/Switzerland/Luxembourg-specific vocabulary (CDI/CDD, convention collective SYNTEC, RTT, mutuelle, prévoyance, 13e mois, intéressement/participation, titres-restaurant, CSE, portage salarial, etc.). Includes `_shared.md`, `offre.md` (evaluation), `postuler.md` (apply), `pipeline.md`.
-
-**When to use German modes:** If the user is targeting German-language job postings, lives in DACH, or asks for German output. Either:
-1. User says "use German modes" → read from `modes/de/` instead of `modes/`
-2. User sets `language.modes_dir: modes/de` in `config/profile.yml` → always use German modes
-3. You detect a German JD → suggest switching to German modes
-
-**When to use French modes:** If the user is targeting French-language job postings, lives in France/Belgium/Switzerland/Luxembourg/Quebec, or asks for French output. Either:
-1. User says "use French modes" → read from `modes/fr/` instead of `modes/`
-2. User sets `language.modes_dir: modes/fr` in `config/profile.yml` → always use French modes
-3. You detect a French JD → suggest switching to French modes
-
-**When NOT to:** If the user applies to English-language roles, even at French or German companies, use the default English modes.
-
-### Skill Modes
-
-| If the user... | Mode |
-|----------------|------|
-| Pastes JD or URL | auto-pipeline (evaluate + report + PDF + tracker) |
-| Asks to evaluate offer | `oferta` |
-| Asks to compare offers | `ofertas` |
-| Wants LinkedIn outreach | `contacto` |
-| Asks for company research | `deep` |
-| Preps for interview at specific company | `interview-prep` |
-| Wants to generate CV/PDF | `pdf` |
-| Evaluates a course/cert | `training` |
-| Evaluates portfolio project | `project` |
-| Asks about application status | `tracker` |
-| Fills out application form | `apply` |
-| Searches for new offers | `scan` |
-| Processes pending URLs | `pipeline` |
-| Batch processes offers | `batch` |
-| Asks about rejection patterns or wants to improve targeting | `patterns` |
+Everything is customizable — just ask.
+```
 
 ### CV Source of Truth
 
 - `cv.md` in project root is the canonical CV
 - `article-digest.md` has detailed proof points (optional)
-- **NEVER hardcode metrics** -- read them from these files at evaluation time
+- **NEVER hardcode metrics** — read them from these files at evaluation time
 
 ---
 
-## Ethical Use -- CRITICAL
+## Ethical Use — CRITICAL
 
-**This system is designed for quality, not quantity.** The goal is to help the user find and apply to roles where there is a genuine match -- not to spam companies with mass applications.
-
-- **NEVER submit an application without the user reviewing it first.** Fill forms, draft answers, generate PDFs -- but always STOP before clicking Submit/Send/Apply. The user makes the final call.
-- **Strongly discourage low-fit applications.** If a score is below 4.0/5, explicitly recommend against applying. The user's time and the recruiter's time are both valuable. Only proceed if the user has a specific reason to override the score.
-- **Quality over speed.** A well-targeted application to 5 companies beats a generic blast to 50. Guide the user toward fewer, better applications.
-- **Respect recruiters' time.** Every application a human reads costs someone's attention. Only send what's worth reading.
+**Quality, not quantity.** Never submit an application without user review. Strongly discourage applications scoring below 4.0/5. Respect recruiters' time.
 
 ---
 
-## Offer Verification -- MANDATORY
+## Offer Verification — MANDATORY
 
 **NEVER trust WebSearch/WebFetch to verify if an offer is still active.** ALWAYS use Playwright:
 1. `browser_navigate` to the URL
 2. `browser_snapshot` to read content
 3. Only footer/navbar without JD = closed. Title + description + Apply = active.
 
-**Exception for batch workers (`claude -p`):** Playwright is not available in headless pipe mode. Use WebFetch as fallback and mark the report header with `**Verification:** unconfirmed (batch mode)`. The user can verify manually later.
-
 ---
 
 ## Stack and Conventions
 
-- Node.js (mjs modules), Playwright (PDF + scraping), YAML (config), HTML/CSS (template), Markdown (data), Canva MCP (optional visual CV)
+- Node.js (mjs modules), Playwright (scanning + verification), YAML (config), Markdown (data)
+- Python 3.10+ (JobSpy wrapper — `jobspy-scan.py`). Requires venv: `.venv/`
 - Scripts in `.mjs`, configuration in YAML
-- Output in `output/` (gitignored), Reports in `reports/`
-- JDs in `jds/` (referenced as `local:jds/{file}` in pipeline.md)
-- Batch in `batch/` (gitignored except scripts and prompt)
-- Report numbering: sequential 3-digit zero-padded, max existing + 1
-- **RULE: After each batch of evaluations, run `node merge-tracker.mjs`** to merge tracker additions and avoid duplications.
-- **RULE: NEVER create new entries in applications.md if company+role already exists.** Update the existing entry.
+- JD files in Obsidian vault `10_JD_Pool/` (not local `jds/` folder)
+- Resume output in Obsidian vault `20_Tailored_CV/` (delegated to skill)
+- Interview prep in Obsidian vault `40_Interviewing/` (delegated to skill)
+- **All output is in English.**
+- **No separate `applications.md` tracker.** JD file frontmatter is the single source of truth.
 
-### TSV Format for Tracker Additions
+### Frontmatter Status Lifecycle
 
-Write one TSV file per evaluation to `batch/tracker-additions/{num}-{company-slug}.tsv`. Single line, 9 tab-separated columns:
-
-```
-{num}\t{date}\t{company}\t{role}\t{status}\t{score}/5\t{pdf_emoji}\t[{num}](reports/{num}-{slug}-{date}.md)\t{note}
-```
-
-**Column order (IMPORTANT -- status BEFORE score):**
-1. `num` -- sequential number (integer)
-2. `date` -- YYYY-MM-DD
-3. `company` -- short company name
-4. `role` -- job title
-5. `status` -- canonical status (e.g., `Evaluated`)
-6. `score` -- format `X.X/5` (e.g., `4.2/5`)
-7. `pdf` -- `✅` or `❌`
-8. `report` -- markdown link `[num](reports/...)`
-9. `notes` -- one-line summary
-
-**Note:** In applications.md, score comes BEFORE status. The merge script handles this column swap automatically.
-
-### Pipeline Integrity
-
-1. **NEVER edit applications.md to ADD new entries** -- Write TSV in `batch/tracker-additions/` and `merge-tracker.mjs` handles the merge.
-2. **YES you can edit applications.md to UPDATE status/notes of existing entries.**
-3. All reports MUST include `**URL:**` in the header (between Score and PDF).
-4. All statuses MUST be canonical (see `templates/states.yml`).
-5. Health check: `node verify-pipeline.mjs`
-6. Normalize statuses: `node normalize-statuses.mjs`
-7. Dedup: `node dedup-tracker.mjs`
-
-### Canonical States (applications.md)
-
-**Source of truth:** `templates/states.yml`
-
-| State | When to use |
-|-------|-------------|
-| `Evaluated` | Report completed, pending decision |
-| `Applied` | Application sent |
-| `Responded` | Company responded |
-| `Interview` | In interview process |
-| `Offer` | Offer received |
-| `Rejected` | Rejected by company |
-| `Discarded` | Discarded by candidate or offer closed |
-| `SKIP` | Doesn't fit, don't apply |
-
-**RULES:**
-- No markdown bold (`**`) in status field
-- No dates in status field (use the date column)
-- No extra text (use the notes column)
+`new` → `evaluated` → `applied` → `interviewing` → `offered` → `archived`; or `rejected`/`discarded` → `archived` at any point. Update status in the JD file's YAML frontmatter — the Bases tracker reads it automatically.

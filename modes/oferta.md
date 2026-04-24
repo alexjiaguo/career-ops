@@ -87,71 +87,76 @@ Incluir también:
 
 ---
 
-## Post-evaluación
+## Post-Evaluation (Obsidian-Native)
 
-**SIEMPRE** después de generar los bloques A-F:
+**ALWAYS** after generating blocks A-F:
 
-### 1. Guardar report .md
+### 1. Update JD File Frontmatter
 
-Guardar evaluación completa en `reports/{###}-{company-slug}-{YYYY-MM-DD}.md`.
+Update the JD file in `{vault}/10_JD_Pool/` with evaluation results:
 
-- `{###}` = siguiente número secuencial (3 dígitos, zero-padded)
-- `{company-slug}` = nombre de empresa en lowercase, sin espacios (usar guiones)
-- `{YYYY-MM-DD}` = fecha actual
+```yaml
+status: evaluated
+score: "{X.X}/5"
+Tier: "Tier {1|2|3}"
+archetype: "{detected archetype}"
+description: "{one-line TL;DR from Block A}"
+tags:
+  - jobs
+  - {archetype-tag}
+  - {location-tag}
+  - tier-{1|2|3}
+```
 
-**Formato del report:**
+**Tier assignment:**
+- Score 4.0+ → Tier 1
+- Score 3.5–3.9 → Tier 2
+- Score below 3.5 → Tier 3
+
+### 2. Append Evaluation Inline to JD File
+
+Append the full evaluation below the JD content in the same file:
 
 ```markdown
-# Evaluación: {Empresa} — {Rol}
+---
 
-**Fecha:** {YYYY-MM-DD}
-**Arquetipo:** {detectado}
-**Score:** {X/5}
-**PDF:** {ruta o pendiente}
+## Evaluation — {YYYY-MM-DD}
+
+**Archetype:** {detected}
+**Score:** {X.X}/5
+**Tier:** {1|2|3}
+
+### A) Role Summary
+(full Block A content)
+
+### B) CV Match
+(full Block B content)
+
+### C) Level & Strategy
+(full Block C content)
+
+### D) Comp & Demand
+(full Block D content)
+
+### E) Personalization Plan
+(full Block E content)
+
+### F) Interview Plan
+(full Block F content)
+
+### G) Draft Application Answers
+(only if score >= 4.5)
 
 ---
 
-## A) Resumen del Rol
-(contenido completo del bloque A)
-
-## B) Match con CV
-(contenido completo del bloque B)
-
-## C) Nivel y Estrategia
-(contenido completo del bloque C)
-
-## D) Comp y Demanda
-(contenido completo del bloque D)
-
-## E) Plan de Personalización
-(contenido completo del bloque E)
-
-## F) Plan de Entrevistas
-(contenido completo del bloque F)
-
-## G) Draft Application Answers
-(solo si score >= 4.5 — borradores de respuestas para el formulario de aplicación)
-
----
-
-## Keywords extraídas
-(lista de 15-20 keywords del JD para ATS optimization)
+### Keywords Extracted
+(15-20 JD keywords for ATS optimization)
 ```
 
-### 2. Registrar en tracker
+### 3. Tracker Update (Automatic)
 
-**SIEMPRE** registrar en `data/applications.md`:
-- Siguiente número secuencial
-- Fecha actual
-- Empresa
-- Rol
-- Score: promedio de match (1-5)
-- Estado: `Evaluada`
-- PDF: ❌ (o ✅ si auto-pipeline generó PDF)
-- Report: link relativo al report .md (ej: `[001](reports/001-company-2026-01-01.md)`)
+The Obsidian Bases tracker at `00_Strategy/Tracker_2026.base` reads frontmatter from JD files automatically. By updating frontmatter in Step 1, the tracker is already updated. **No separate applications.md or TSV needed.**
 
-**Formato del tracker:**
+### 4. Story Bank
 
-```markdown
-| # | Fecha | Empresa | Rol | Score | Estado | PDF | Report |
-```
+If STAR+R stories were generated in Block F, append new ones to `interview-prep/story-bank.md` (if it exists). These accumulate as reusable stories across evaluations.

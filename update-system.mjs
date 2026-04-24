@@ -76,7 +76,6 @@ const USER_PATHS = [
   'cv.md',
   'config/profile.yml',
   'modes/_profile.md',
-  'portals.yml',
   'article-digest.md',
   'interview-prep/story-bank.md',
   'data/',

@@ -5,25 +5,31 @@
   "scripts": {
     "doctor": "node doctor.mjs",
     "verify": "node verify-pipeline.mjs",
-    "normalize": "node normalize-statuses.mjs",
-    "dedup": "node dedup-tracker.mjs",
-    "merge": "node merge-tracker.mjs",
+    "test": "node test-all.mjs",
     "pdf": "node generate-pdf.mjs",
-    "sync-check": "node cv-sync-check.mjs",
     "update:check": "node update-system.mjs check",
     "update": "node update-system.mjs apply",
     "rollback": "node update-system.mjs rollback",
-    "liveness": "node check-liveness.mjs"
+    "liveness": "node check-liveness.mjs",
+    "jobspy:scan": "source .venv/bin/activate && python3 jobspy-scan.py",
+    "linkedin:scan": "node linkedin-scan.mjs"
   },
-  "keywords": ["ai", "job-search", "claude-code", "career", "automation"],
+  "keywords": [
+    "ai",
+    "job-search",
+    "claude-code",
+    "career",
+    "automation"
+  ],
   "author": "Santiago Fernández de Valderrama <hi@santifer.io> (https://santifer.io)",
   "homepage": "https://santifer.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/santifer/career-ops"
+    "url": "https://github.com/alexjiaguo/career-ops"
   },
   "license": "MIT",
   "dependencies": {
+    "linkedin-jobs-api": "^1.0.7",
     "playwright": "^1.58.1"
   }
 }

@@ -11,27 +11,29 @@ Key sections:
 - **compensation**: Target range, minimum, currency
 - **location**: Country, timezone, visa status, on-site availability
 
-## Target Roles (modes/_shared.md)
+## Target Roles (modes/_profile.md)
 
-The archetype table in `_shared.md` determines how offers are scored and CVs are framed. Edit the table to match YOUR career targets:
+Keep your personal archetypes and framing in `modes/_profile.md`, not `_shared.md`.
 
-```markdown
-| Archetype | Thematic axes | What they buy |
-|-----------|---------------|---------------|
-| **Your Role 1** | key skills | what they need |
-| **Your Role 2** | key skills | what they need |
-```
+Customize:
 
-Also update the "Adaptive Framing" table to map YOUR specific projects to each archetype.
+1. Your target archetypes
+2. The proof points to emphasize for each archetype
+3. Your exit narrative and positioning
+4. Your negotiation framing
 
-## Portals (portals.yml)
+## Company Discovery Targets (Obsidian vault)
 
-Copy from `templates/portals.example.yml` and customize:
+Maintain company targeting in the Obsidian vault config area:
 
-1. **title_filter.positive**: Keywords matching your target roles
-2. **title_filter.negative**: Tech stacks or domains to exclude
-3. **search_queries**: WebSearch queries for job boards (Ashby, Greenhouse, Lever)
-4. **tracked_companies**: Companies to check directly
+- `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml`
+- `{vault}/99_The_Treasure_Vault/01_Career_Ops/target-companies.yml`
+
+Use that vault-side config to tune:
+1. Positive/negative title filters
+2. Search queries for supported job boards
+3. Tracked companies to check directly
+4. Location and geo preferences for discovery
 
 ## CV Template (templates/cv-template.html)
 
@@ -72,5 +74,5 @@ Save hooks in `.claude/settings.json`.
 
 The canonical states rarely need changing. If you add new states, update:
 1. `templates/states.yml`
-2. `normalize-statuses.mjs` (alias mappings)
-3. `modes/_shared.md` (any references)
+2. Any frontmatter validation that depends on the canonical list
+3. Any mode instructions that mention the lifecycle

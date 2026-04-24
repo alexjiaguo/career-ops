@@ -61,16 +61,16 @@ Built by someone who used it to evaluate 740+ job offers, generate 100+ tailored
 
 | Feature | Description |
 |---------|-------------|
-| **Auto-Pipeline** | Paste a URL, get a full evaluation + PDF + tracker entry |
+| **Auto-Pipeline** | Paste a URL, get a full evaluation, JD frontmatter update, and PDF workflow |
 | **6-Block Evaluation** | Role summary, CV match, level strategy, comp research, personalization, interview prep (STAR+R) |
 | **Interview Story Bank** | Accumulates STAR+Reflection stories across evaluations -- 5-10 master stories that answer any behavioral question |
 | **Negotiation Scripts** | Salary negotiation frameworks, geographic discount pushback, competing offer leverage |
 | **ATS PDF Generation** | Keyword-injected CVs with Space Grotesk + DM Sans design |
-| **Portal Scanner** | 45+ companies pre-configured (Anthropic, OpenAI, ElevenLabs, Retool, n8n...) + custom queries across Ashby, Greenhouse, Lever, Wellfound |
+| **Company Discovery + Scan** | Discover target companies and scan job boards into the Obsidian vault workflow |
 | **Batch Processing** | Parallel evaluation with `claude -p` workers |
 | **Dashboard TUI** | Terminal UI to browse, filter, and sort your pipeline |
 | **Human-in-the-Loop** | AI evaluates and recommends, you decide and act. The system never submits an application -- you always have the final call |
-| **Pipeline Integrity** | Automated merge, dedup, status normalization, health checks |
+| **Pipeline Integrity** | Frontmatter validation and vault-health checks |
 
 ## Quick Start
 
@@ -78,32 +78,28 @@ Built by someone who used it to evaluate 740+ job offers, generate 100+ tailored
 # 1. Clone and install
 git clone https://github.com/santifer/career-ops.git
 cd career-ops && npm install
-npx playwright install chromium   # Required for PDF generation
+npx playwright install chromium   # Required for PDF generation and portal checks
 
-# 2. Check setup
-npm run doctor                     # Validates all prerequisites
+# 2. Create your profile config
+cp config/profile.example.yml config/profile.yml
 
-# 3. Configure
-cp config/profile.example.yml config/profile.yml  # Edit with your details
-cp templates/portals.example.yml portals.yml       # Customize companies
-
-# 4. Add your CV
+# 3. Add your CV
 # Create cv.md in the project root with your CV in markdown
 
-# 5. Personalize with Claude
-claude   # Open Claude Code in this directory
+# 4. Open Claude in this directory
+claude
 
-# Then ask Claude to adapt the system to you:
-# "Change the archetypes to backend engineering roles"
-# "Translate the modes to English"
-# "Add these 5 companies to portals.yml"
-# "Update my profile with this CV I'm pasting"
+# 5. Complete Obsidian onboarding
+# Claude will guide you to set up:
+# - modes/_profile.md
+# - your Obsidian vault config
+# - your target companies and JD workflow
 
-# 6. Start using
-# Paste a job URL or run /career-ops
+# 6. Verify setup
+npm run doctor
 ```
 
-> **The system is designed to be customized by Claude itself.** Modes, archetypes, scoring weights, negotiation scripts -- just ask Claude to change them. It reads the same files it uses, so it knows exactly what to edit.
+> **The system is designed to be customized by Claude itself.** Keep your personal configuration in `config/profile.yml` and `modes/_profile.md`. The vault JD files are the operational source of truth, and Claude should update them rather than maintaining a separate tracker file.
 
 See [docs/SETUP.md](docs/SETUP.md) for the full setup guide.
 
@@ -144,15 +140,15 @@ You paste a job URL or description
 │  (reads cv.md)   │
 └────────┬─────────┘
          │
-    ┌────┼────┐
-    ▼    ▼    ▼
- Report  PDF  Tracker
-  .md   .pdf   .tsv
+    ┌────┼───────────────┐
+    ▼    ▼               ▼
+ JD note PDF      Bases tracker
+ update  output   (reads frontmatter)
 ```
 
-## Pre-configured Portals
+## Pre-configured Discovery Targets
 
-The scanner comes with **45+ companies** ready to scan and **19 search queries** across major job boards. Copy `templates/portals.example.yml` to `portals.yml` and add your own:
+The scanner comes with **45+ companies** ready to scan and **19 search queries** across major job boards. Add or refine your targets in the Obsidian vault company-config area and let Career-Ops use that list during discovery:
 
 **AI Labs:** Anthropic, OpenAI, Mistral, Cohere, LangChain, Pinecone
 **Voice AI:** ElevenLabs, PolyAI, Parloa, Hume AI, Deepgram, Vapi, Bland AI
@@ -186,27 +182,25 @@ career-ops/
 ├── article-digest.md            # Your proof points (optional)
 ├── config/
 │   └── profile.example.yml      # Template for your profile
-├── modes/                       # 14 skill modes
-│   ├── _shared.md               # Shared context (customize this)
+├── modes/                       # Career-Ops mode prompts
+│   ├── _shared.md               # Shared system rules
+│   ├── _profile.md              # Your personal overrides (gitignored)
+│   ├── obsidian-bridge.md       # Vault integration contract
 │   ├── oferta.md                # Single evaluation
 │   ├── pdf.md                   # PDF generation
-│   ├── scan.md                  # Portal scanner
-│   ├── batch.md                 # Batch processing
+│   ├── scan.md                  # Offer discovery and scan
 │   └── ...
 ├── templates/
 │   ├── cv-template.html         # ATS-optimized CV template
-│   ├── portals.example.yml      # Scanner config template
 │   └── states.yml               # Canonical statuses
 ├── batch/
 │   ├── batch-prompt.md          # Self-contained worker prompt
 │   └── batch-runner.sh          # Orchestrator script
 ├── dashboard/                   # Go TUI pipeline viewer
-├── data/                        # Your tracking data (gitignored)
-├── reports/                     # Evaluation reports (gitignored)
-├── output/                      # Generated PDFs (gitignored)
+├── web-board/                   # Browser-based vault board
 ├── fonts/                       # Space Grotesk + DM Sans
 ├── docs/                        # Setup, customization, architecture
-└── examples/                    # Sample CV, report, proof points
+└── examples/                    # Sample CV and proof points
 ```
 
 ## Tech Stack
@@ -221,7 +215,7 @@ career-ops/
 - **PDF**: Playwright/Puppeteer + HTML template
 - **Scanner**: Playwright + Greenhouse API + WebSearch
 - **Dashboard**: Go + Bubble Tea + Lipgloss (Catppuccin Mocha theme)
-- **Data**: Markdown tables + YAML config + TSV batch files
+- **Data**: Vault-backed markdown notes + YAML frontmatter + YAML config
 
 ## Also Open Source
 

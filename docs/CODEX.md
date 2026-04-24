@@ -4,7 +4,7 @@ Career-Ops supports Codex through the root `AGENTS.md` file.
 
 If your Codex client reads project instructions automatically, `AGENTS.md`
 is enough for routing and behavior. Codex should reuse the same checked-in
-mode files, templates, tracker flow, and scripts that already power the
+mode files, templates, vault workflow, and scripts that already power the
 Claude workflow.
 
 ## Prerequisites
@@ -50,10 +50,10 @@ layer.
 ## Behavioral Rules
 
 - Treat raw JD text or a job URL as the full auto-pipeline path unless the user explicitly asks for evaluation only.
-- Keep all personalization in `config/profile.yml`, `modes/_profile.md`, `article-digest.md`, or `portals.yml`.
+- Keep all personalization in `config/profile.yml`, `modes/_profile.md`, and `article-digest.md`.
+- Treat JD files in the Obsidian vault as the single source of truth for status, score, and pipeline state.
 - Never verify a job’s live status with generic web fetch when Playwright is available.
 - Never submit an application for the user.
-- Never add new tracker rows directly to `data/applications.md`; use the TSV addition flow and `merge-tracker.mjs`.
 
 ## Verification
 

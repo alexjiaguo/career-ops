@@ -1,141 +1,122 @@
-# Mode: interview-prep — Company-Specific Interview Intelligence
+# Mode: interview-prep — Interview Preparation (Delegated)
 
-When the user asks to prep for an interview at a specific company+role, or when an evaluation scores 4.0+ and the user updates status to `Interview`, run this mode.
+This mode delegates interview preparation to the user's own skills:
+- **`interview-prep`** — 3-version generation, SPIN/Gap Selling, AECR objection handling, debrief templates
+- **`mock-interview-transcript`** — Converts guides into conversational practice scripts
+- **`pm-vibe-coding`** — For PM vibe coding / product design case study interviews
 
-## Inputs
+## When to Use
 
-1. **Company name** and **role title** (required)
-2. **Evaluation report** in `reports/` (if exists) — read for archetype, gaps, matched proof points
-3. **Story bank** at `interview-prep/story-bank.md` — read for existing prepared stories
-4. **CV** at `cv.md` + `article-digest.md` — read for proof points
-5. **Profile** at `config/profile.yml` + `modes/_profile.md` — read for candidate context
+- User asks to prep for an interview at a specific company
+- An evaluation scores 4.0+ and the user updates status to `Interview`
+- User says "prep for interview", "interview practice", or names a company+role
 
-## Step 1 — Research
+## Workflow
 
-Run these WebSearch queries. Extract structured data, not summaries. Cite sources for every claim.
+### Step 1 — Gather Context
+
+1. **Read the JD file** from `{vault}/10_JD_Pool/{company-role}.md`
+   - Extract full JD content
+   - Extract evaluation (Blocks A-F) if it exists
+   - Note the archetype, score, and identified gaps
+2. **Read the user's CV** from `cv.md`
+3. **Read proof points** from `article-digest.md` (if exists)
+4. **Read existing story bank** from `interview-prep/story-bank.md` (if exists in project root)
+5. **Read profile** from `config/profile.yml` and `modes/_profile.md`
+6. **Check existing prep** in `{vault}/40_Interviewing/` for this company
+
+### Step 2 — Research (Quick)
+
+Before delegating, gather company-specific intelligence:
 
 | Query | What to extract |
-|-------|-----------------|
-| `"{company} {role} interview questions site:glassdoor.com"` | Actual questions asked, difficulty rating, experience rating, process timeline, number of rounds, offer/reject ratio |
-| `"{company} interview process site:teamblind.com"` | Candid process descriptions, recent data points, comp negotiation details, hiring bar |
-| `"{company} {role} interview site:leetcode.com/discuss"` | Specific coding/technical problems, system design topics, round structure |
-| `"{company} engineering blog"` | Tech stack, values, what they publish about, technical priorities |
-| `"{company} interview process {role}"` (general) | Fills gaps from above — blog posts, YouTube, prep guides, candidate write-ups |
+|-------|-----------------| 
+| `"{company} {role} interview" site:glassdoor.com` | Process, questions, difficulty, timeline |
+| `"{company} interview" site:teamblind.com` | Candid experiences, comp data, hiring bar |
+| `"{company} engineering blog"` | Tech stack, values, priorities |
+| `"{company} interview process {role}"` | General intel from blog posts, YouTube, prep guides |
 
-If the company is small or obscure and yields few results, broaden: search for the role archetype at similar-stage companies, and note that intel is sparse.
+**Do NOT fabricate questions.** Only report what was actually found. Label inferred questions as `[inferred from JD]`.
 
-**Do NOT fabricate questions.** If a source says "they asked about distributed systems," report that. Do not invent a specific distributed systems question. When generating likely questions from JD analysis, label them clearly as `[inferred from JD]` not sourced from candidates.
+### Step 3 — Create Interview Folder
 
-## Step 2 — Process Overview
-
-```markdown
-## Process Overview
-- **Rounds:** {N} rounds, ~{X} days end-to-end
-- **Format:** {e.g., recruiter screen → technical phone → take-home → onsite (4 rounds) → hiring manager}
-- **Difficulty:** {X}/5 (Glassdoor avg, N reviews)
-- **Positive experience rate:** {X}%
-- **Known quirks:** {e.g., "pair programming instead of whiteboard", "no LeetCode, all practical", "take-home is 4 hours"}
-- **Sources:** {links}
+Create directory in vault:
+```
+{vault}/40_Interviewing/{Company} {Role}/
 ```
 
-If data is insufficient for any field, write "unknown — not enough data" rather than guessing.
+### Step 4 — Invoke interview-prep Skill
 
-## Step 3 — Round-by-Round Breakdown
+Delegate to the `interview-prep` skill with:
+- Complete JD content
+- Research findings from Step 2
+- User's CV and proof points
+- Existing story bank entries
+- The evaluation report (if exists)
 
-For each round discovered in research:
+The skill will autonomously:
+1. Generate 3 versions of interview answers (Operator / Strategist / Hybrid)
+2. Run comparative evaluation with 9 scoring criteria
+3. Cherry-pick the best elements into a composite
+4. Perform a 7-dimension audit
+5. Optimize through iteration
+6. Generate cue cards for each answer
 
-```markdown
-### Round {N}: {Type}
-- **Duration:** {X} min
-- **Conducted by:** {peer / manager / skip-level / recruiter — if known}
-- **What they evaluate:** {specific skills or traits}
-- **Reported questions:**
-  - {question} — [source: Glassdoor 2026-Q1]
-  - {question} — [source: Blind]
-- **How to prepare:** {1-2 concrete actions}
+### Step 5 — Invoke mock-interview-transcript Skill (Optional)
+
+If the user wants to practice, delegate to `mock-interview-transcript` with:
+- The interview guide generated in Step 4
+
+The skill will generate realistic conversational practice scripts.
+
+### Step 6 — Invoke pm-vibe-coding Skill (If Applicable)
+
+If the role involves product design case studies or vibe coding interviews:
+- Delegate to `pm-vibe-coding` skill
+- 5-step workflow: Frame → Diverge → Converge → Ship → Defend
+
+### Step 7 — Save All Outputs
+
+Save everything to `{vault}/40_Interviewing/{Company} {Role}/`:
+- Interview guide (main output from `interview-prep` skill)
+- Mock transcript (if generated)
+- Vibe coding prep (if applicable)
+- Research notes
+
+### Step 8 — Update JD File
+
+Update the JD file's frontmatter in `10_JD_Pool/`:
+```yaml
+status: interviewing
 ```
 
-If round structure is unknown, state that and provide the best available intel on what types of rounds to expect based on company size, stage, and role level.
-
-## Step 4 — Likely Questions
-
-Categorize all discovered and inferred questions:
-
-### Technical
-Questions about system design, coding, architecture, domain knowledge.
-For each: the question, source, and what a strong answer looks like for this candidate specifically (reference CV proof points).
-
-### Behavioral
-Questions about leadership, conflict, collaboration, failure.
-For each: the question, source, and which story from `story-bank.md` maps best.
-
-### Role-Specific
-Questions tied to the specific job description (archetype-aware).
-For each: the question, why they're likely asking it (what JD requirement it maps to), and the candidate's best angle.
-
-### Background Red Flags
-Questions the interviewer will probably ask about gaps, transitions, or unusual elements in the candidate's background. Read `_profile.md` and `cv.md` to identify what might raise questions.
-For each: the likely question, why it comes up, and a recommended framing (honest, specific, forward-looking — never defensive).
-
-## Step 5 — Story Bank Mapping
-
-| # | Likely question/topic | Best story from story-bank.md | Fit | Gap? |
-|---|----------------------|-------------------------------|-----|------|
-| 1 | ... | [Story Title] | strong/partial/none | |
-
-- **strong**: story directly answers the question
-- **partial**: story is adjacent, needs reframing
-- **none**: no existing story — flag for the user
-
-For each gap, suggest: "You need a story about {topic}. Consider: {specific experience from cv.md that could become a STAR+R story}."
-
-If the user wants to draft missing stories, help them build STAR+R format and append to `interview-prep/story-bank.md`.
-
-## Step 6 — Technical Prep Checklist
-
-Based on what the company actually tests, not generic advice:
-
+And append a link:
 ```markdown
-- [ ] {topic} — why: "{evidence from research}"
-- [ ] {topic} — why: "{their blog/product suggests this matters}"
-- [ ] {topic} — why: "{asked in N/M recent Glassdoor reviews}"
+> [!tip] Interview Prep Ready
+> Full prep materials at [[40_Interviewing/{Company} {Role}/]]
+> Created: {YYYY-MM-DD}
 ```
 
-Prioritize by frequency and relevance to the role. Max 10 items.
+### Step 9 — Story Bank Update
 
-## Step 7 — Company Signals
+If new STAR+R stories were generated during prep:
+- Append them to `interview-prep/story-bank.md` in project root
+- These accumulate across all interview preps as reusable stories
 
-Things to say, do, and avoid based on research:
+## What This Mode Does NOT Do
 
-- **Values they screen for:** name them, cite source (careers page, blog, Glassdoor reviews)
-- **Vocabulary to use:** terms the company uses internally — shows homework (e.g., Stripe says "increase the GDP of the internet", Anthropic says "safety" not "alignment")
-- **Things to avoid:** specific anti-patterns flagged in interview reviews
-- **Questions to ask them:** 2-3 sharp questions that demonstrate you've researched the company, tied to recent news or blog posts discovered in Step 1
+- **Does NOT use the generic career-ops interview research template** — the user's skill has a superior multi-version, audit-optimized workflow
+- **Does NOT generate answers in the career-ops default format** — defers entirely to the user's skill
 
-## Output
+## Post-Interview
 
-Save the full report to `interview-prep/{company-slug}-{role-slug}.md` with this header:
+After the interview, suggest:
+- Update JD file status: `interviewing` → `offered` / `rejected`
+- Run the debrief template from `interview-prep` skill
+- Move file to `50_Offers/` or `90_Archived_Roles/` as appropriate
 
-```markdown
-# Interview Intel: {Company} — {Role}
+## Fallback
 
-**Report:** {link to evaluation report if exists, or "N/A"}
-**Researched:** {YYYY-MM-DD}
-**Sources:** {N} Glassdoor reviews, {N} Blind posts, {N} other
-```
-
-## Post-Research
-
-After delivering the report:
-
-1. Ask the user if they want to draft stories for any gaps found in Step 5
-2. If they have a scheduled interview date, note it: "Your interview is in {X} days. Want me to set a reminder to review this prep?"
-3. Suggest running `deep` mode if the company research in Step 1 was thin — deep mode covers strategy, culture, and competitive landscape in more depth
-
-## Rules
-
-- **NEVER invent interview questions and attribute them to sources.** Inferred questions must be labeled `[inferred from JD]`.
-- **NEVER fabricate Glassdoor ratings or statistics.** If the data isn't there, say so.
-- **Cite everything.** Every question, every stat, every claim gets a source or an `[inferred]` tag.
-- Generate in the language of the JD (EN default).
-- Be direct. This is a working prep document, not a pep talk.
+If the `interview-prep` skill is not available:
+1. Notify the user: "The interview-prep skill is not installed. Would you like me to use the built-in interview research mode instead?"
+2. If yes, run the original career-ops interview research workflow (Steps 1-7 from the original `interview-prep.md`)

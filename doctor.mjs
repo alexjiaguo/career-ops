@@ -5,7 +5,7 @@
  * Checks all prerequisites and prints a pass/fail checklist.
  */
 
-import { existsSync, mkdirSync, readdirSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -90,16 +90,16 @@ function checkProfile() {
   };
 }
 
-function checkPortals() {
-  if (existsSync(join(projectRoot, 'portals.yml'))) {
-    return { pass: true, label: 'portals.yml found' };
+function checkProfileOverrides() {
+  if (existsSync(join(projectRoot, 'modes', '_profile.md'))) {
+    return { pass: true, label: 'modes/_profile.md found' };
   }
   return {
     pass: false,
-    label: 'portals.yml not found',
+    label: 'modes/_profile.md not found',
     fix: [
-      'Run: cp templates/portals.example.yml portals.yml',
-      'Then customize with your target companies',
+      'Copy modes/_profile.template.md to modes/_profile.md',
+      'Then customize it with your own narrative and targeting rules',
     ],
   };
 }
@@ -132,21 +132,11 @@ function checkFonts() {
   return { pass: true, label: 'Fonts directory ready' };
 }
 
-function checkAutoDir(name) {
-  const dirPath = join(projectRoot, name);
-  if (existsSync(dirPath)) {
-    return { pass: true, label: `${name}/ directory ready` };
-  }
-  try {
-    mkdirSync(dirPath, { recursive: true });
-    return { pass: true, label: `${name}/ directory ready (auto-created)` };
-  } catch {
-    return {
-      pass: false,
-      label: `${name}/ directory could not be created`,
-      fix: `Run: mkdir ${name}`,
-    };
-  }
+function checkVaultConfig() {
+  return {
+    pass: true,
+    label: 'Obsidian vault config is validated during runtime setup',
+  };
 }
 
 async function main() {
@@ -159,11 +149,9 @@ async function main() {
     await checkPlaywright(),
     checkCv(),
     checkProfile(),
-    checkPortals(),
+    checkProfileOverrides(),
+    checkVaultConfig(),
     checkFonts(),
-    checkAutoDir('data'),
-    checkAutoDir('output'),
-    checkAutoDir('reports'),
   ];
 
   let failures = 0;

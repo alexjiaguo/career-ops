@@ -2,48 +2,42 @@
 /**
  * verify-pipeline.mjs — Health check for career-ops pipeline integrity
  *
- * Checks:
- * 1. All statuses are canonical (per states.yml)
- * 2. No duplicate company+role entries
- * 3. All report links point to existing files
- * 4. Scores match format X.XX/5 or N/A or DUP
- * 5. All rows have proper pipe-delimited format
- * 6. No pending TSVs in tracker-additions/ (only in merged/ or archived/)
- * 7. states.yml canonical IDs for cross-system consistency
+ * Validates Obsidian vault JD files in 10_JD_Pool/:
+ * 1. All frontmatter statuses are canonical (per obsidian-bridge.md lifecycle)
+ * 2. No duplicate company+role JD files
+ * 3. Required frontmatter fields are present
+ * 4. Scores match format X.X/5 or are empty
+ * 5. Tier assignment is consistent with score
+ * 6. Source URLs are present for non-manual JDs
  *
- * Run: node career-ops/verify-pipeline.mjs
+ * Run: npm run verify
  */
 
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const CAREER_OPS = dirname(fileURLToPath(import.meta.url));
-// Support both layouts: data/applications.md (boilerplate) and applications.md (original)
-const APPS_FILE = existsSync(join(CAREER_OPS, 'data/applications.md'))
-  ? join(CAREER_OPS, 'data/applications.md')
-  : join(CAREER_OPS, 'applications.md');
-const ADDITIONS_DIR = join(CAREER_OPS, 'batch/tracker-additions');
-const REPORTS_DIR = join(CAREER_OPS, 'reports');
-const STATES_FILE = existsSync(join(CAREER_OPS, 'templates/states.yml'))
-  ? join(CAREER_OPS, 'templates/states.yml')
-  : join(CAREER_OPS, 'states.yml');
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// ── Vault path resolution ───────────────────────────────────────
+function resolveVaultPath() {
+  if (process.env.CAREER_OPS_VAULT_PATH) return process.env.CAREER_OPS_VAULT_PATH;
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  return join(home, 'Library/Mobile Documents/iCloud~md~obsidian/Documents/Life_OS/10_Projects/02_Job_Hunt_2026');
+}
+
+const VAULT_BASE = resolveVaultPath();
+const JD_POOL = join(VAULT_BASE, '10_JD_Pool');
+
+// ── Canonical statuses (from obsidian-bridge.md) ────────────────
 const CANONICAL_STATUSES = [
-  'evaluated', 'applied', 'responded', 'interview',
-  'offer', 'rejected', 'discarded', 'skip',
+  'new', 'evaluated', 'applied', 'interviewing',
+  'offered', 'rejected', 'discarded', 'archived',
 ];
 
-const ALIASES = {
-  'evaluada': 'evaluated', 'condicional': 'evaluated', 'hold': 'evaluated', 'evaluar': 'evaluated', 'verificar': 'evaluated',
-  'aplicado': 'applied', 'enviada': 'applied', 'aplicada': 'applied', 'applied': 'applied', 'sent': 'applied',
-  'respondido': 'responded',
-  'entrevista': 'interview',
-  'oferta': 'offer',
-  'rechazado': 'rejected', 'rechazada': 'rejected',
-  'descartado': 'discarded', 'descartada': 'discarded', 'cerrada': 'discarded', 'cancelada': 'discarded',
-  'no aplicar': 'skip', 'no_aplicar': 'skip', 'monitor': 'skip', 'geo blocker': 'skip',
-};
+// ── Required frontmatter fields ─────────────────────────────────
+const REQUIRED_FIELDS = ['title', 'status', 'company'];
+const RECOMMENDED_FIELDS = ['source', 'created', 'location', 'archetype'];
 
 let errors = 0;
 let warnings = 0;
@@ -52,135 +46,167 @@ function error(msg) { console.log(`❌ ${msg}`); errors++; }
 function warn(msg) { console.log(`⚠️  ${msg}`); warnings++; }
 function ok(msg) { console.log(`✅ ${msg}`); }
 
-// --- Read applications.md ---
-if (!existsSync(APPS_FILE)) {
-  console.log('\n📊 No applications.md found. This is normal for a fresh setup.');
-  console.log('   The file will be created when you evaluate your first offer.\n');
+// ── Simple YAML frontmatter parser ──────────────────────────────
+function parseFrontmatter(content) {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const yaml = match[1];
+  const data = {};
+  for (const line of yaml.split('\n')) {
+    const m = line.match(/^(\w[\w_-]*)\s*:\s*(.*)$/);
+    if (m) {
+      let val = m[2].trim();
+      // Strip quotes
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      else if (val === '' || val === '""' || val === "''") val = '';
+      data[m[1]] = val;
+    }
+  }
+  return data;
+}
+
+// ── Main ────────────────────────────────────────────────────────
+
+if (!existsSync(JD_POOL)) {
+  console.log('\n📂 JD Pool not found at:', JD_POOL);
+  console.log('   Set CAREER_OPS_VAULT_PATH or check your Obsidian vault path.\n');
+  process.exit(1);
+}
+
+let files;
+try {
+  files = readdirSync(JD_POOL).filter(f => f.endsWith('.md'));
+} catch (err) {
+  if (err.code === 'EPERM' || err.code === 'EACCES') {
+    console.log('\n📂 JD Pool exists but is not accessible (iCloud sync permissions).');
+    console.log('   Grant Terminal full disk access in System Settings > Privacy & Security,');
+    console.log('   or set CAREER_OPS_VAULT_PATH to a local copy.\n');
+    process.exit(0); // Not an error — just can't access from this context
+  }
+  throw err; // Re-throw unexpected errors
+}
+
+if (files.length === 0) {
+  console.log('\n📊 No JD files found in 10_JD_Pool/. This is normal for a fresh setup.');
+  console.log('   JD files will appear when you evaluate your first offer.\n');
   process.exit(0);
 }
-const content = readFileSync(APPS_FILE, 'utf-8');
-const lines = content.split('\n');
+
+console.log(`\n📊 Checking ${files.length} JD files in 10_JD_Pool/\n`);
 
 const entries = [];
-for (const line of lines) {
-  if (!line.startsWith('|')) continue;
-  const parts = line.split('|').map(s => s.trim());
-  if (parts.length < 9) continue;
-  const num = parseInt(parts[1]);
-  if (isNaN(num)) continue;
-  entries.push({
-    num, date: parts[2], company: parts[3], role: parts[4],
-    score: parts[5], status: parts[6], pdf: parts[7], report: parts[8],
-    notes: parts[9] || '',
-  });
+
+for (const filename of files) {
+  const filepath = join(JD_POOL, filename);
+  const content = readFileSync(filepath, 'utf-8');
+  const fm = parseFrontmatter(content);
+  if (!fm) {
+    error(`${filename}: No YAML frontmatter found`);
+    continue;
+  }
+  entries.push({ filename, fm });
 }
 
-console.log(`\n📊 Checking ${entries.length} entries in applications.md\n`);
+// --- Check 1: Required frontmatter fields ---
+let missingFields = 0;
+for (const { filename, fm } of entries) {
+  for (const field of REQUIRED_FIELDS) {
+    if (!fm[field] && fm[field] !== false) {
+      error(`${filename}: Missing required field '${field}'`);
+      missingFields++;
+    }
+  }
+  for (const field of RECOMMENDED_FIELDS) {
+    if (!fm[field] && fm[field] !== false) {
+      warn(`${filename}: Missing recommended field '${field}'`);
+    }
+  }
+}
+if (missingFields === 0) ok('All JD files have required frontmatter fields');
 
-// --- Check 1: Canonical statuses ---
+// --- Check 2: Canonical statuses ---
 let badStatuses = 0;
-for (const e of entries) {
-  const clean = e.status.replace(/\*\*/g, '').trim().toLowerCase();
-  // Strip trailing dates
-  const statusOnly = clean.replace(/\s+\d{4}-\d{2}-\d{2}.*$/, '').trim();
-
-  if (!CANONICAL_STATUSES.includes(statusOnly) && !ALIASES[statusOnly]) {
-    error(`#${e.num}: Non-canonical status "${e.status}"`);
-    badStatuses++;
-  }
-
-  // Check for markdown bold in status
-  if (e.status.includes('**')) {
-    error(`#${e.num}: Status contains markdown bold: "${e.status}"`);
-    badStatuses++;
-  }
-
-  // Check for dates in status
-  if (/\d{4}-\d{2}-\d{2}/.test(e.status)) {
-    error(`#${e.num}: Status contains date: "${e.status}" — dates go in date column`);
+for (const { filename, fm } of entries) {
+  const status = (fm.status || '').toLowerCase().trim();
+  if (!status) continue; // already caught by required fields check
+  if (!CANONICAL_STATUSES.includes(status)) {
+    error(`${filename}: Non-canonical status "${fm.status}" (valid: ${CANONICAL_STATUSES.join(', ')})`);
     badStatuses++;
   }
 }
 if (badStatuses === 0) ok('All statuses are canonical');
 
-// --- Check 2: Duplicates ---
+// --- Check 3: Duplicate company+role ---
 const companyRoleMap = new Map();
 let dupes = 0;
-for (const e of entries) {
-  const key = e.company.toLowerCase().replace(/[^a-z0-9]/g, '') + '::' +
-    e.role.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+for (const { filename, fm } of entries) {
+  const company = (fm.company || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const title = (fm.title || filename).toLowerCase().replace(/[^a-z0-9 ]/g, '');
+  const key = `${company}::${title}`;
   if (!companyRoleMap.has(key)) companyRoleMap.set(key, []);
-  companyRoleMap.get(key).push(e);
+  companyRoleMap.get(key).push(filename);
 }
-for (const [key, group] of companyRoleMap) {
+for (const [, group] of companyRoleMap) {
   if (group.length > 1) {
-    warn(`Possible duplicates: ${group.map(e => `#${e.num}`).join(', ')} (${group[0].company} — ${group[0].role})`);
+    warn(`Possible duplicates: ${group.join(', ')}`);
     dupes++;
   }
 }
-if (dupes === 0) ok('No exact duplicates found');
-
-// --- Check 3: Report links ---
-let brokenReports = 0;
-for (const e of entries) {
-  const match = e.report.match(/\]\(([^)]+)\)/);
-  if (!match) continue;
-  const reportPath = join(CAREER_OPS, match[1]);
-  if (!existsSync(reportPath)) {
-    error(`#${e.num}: Report not found: ${match[1]}`);
-    brokenReports++;
-  }
-}
-if (brokenReports === 0) ok('All report links valid');
+if (dupes === 0) ok('No duplicate JD files found');
 
 // --- Check 4: Score format ---
 let badScores = 0;
-for (const e of entries) {
-  const s = e.score.replace(/\*\*/g, '').trim();
-  if (!/^\d+\.?\d*\/5$/.test(s) && s !== 'N/A' && s !== 'DUP') {
-    error(`#${e.num}: Invalid score format: "${e.score}"`);
+for (const { filename, fm } of entries) {
+  const score = (fm.score || '').toString().trim();
+  if (!score) continue; // Empty score is fine (not yet evaluated)
+  if (!/^\d+\.?\d*\/5$/.test(score)) {
+    error(`${filename}: Invalid score format "${score}" (expected X.X/5)`);
     badScores++;
   }
 }
 if (badScores === 0) ok('All scores valid');
 
-// --- Check 5: Row format ---
-let badRows = 0;
-for (const line of lines) {
-  if (!line.startsWith('|')) continue;
-  if (line.includes('---') || line.includes('Empresa')) continue;
-  const parts = line.split('|');
-  if (parts.length < 9) {
-    error(`Row with <9 columns: ${line.substring(0, 80)}...`);
-    badRows++;
-  }
-}
-if (badRows === 0) ok('All rows properly formatted');
+// --- Check 5: Tier/score consistency ---
+let tierMismatch = 0;
+for (const { filename, fm } of entries) {
+  const scoreStr = (fm.score || '').toString().trim();
+  const tier = (fm.Tier || fm.tier || '').toString().trim();
+  if (!scoreStr || !tier) continue;
 
-// --- Check 6: Pending TSVs ---
-let pendingTsvs = 0;
-if (existsSync(ADDITIONS_DIR)) {
-  const files = readdirSync(ADDITIONS_DIR).filter(f => f.endsWith('.tsv'));
-  pendingTsvs = files.length;
-  if (pendingTsvs > 0) {
-    warn(`${pendingTsvs} pending TSVs in tracker-additions/ (not merged)`);
-  }
-}
-if (pendingTsvs === 0) ok('No pending TSVs');
+  const scoreNum = parseFloat(scoreStr);
+  if (isNaN(scoreNum)) continue;
 
-// --- Check 7: Bold in scores ---
-let boldScores = 0;
-for (const e of entries) {
-  if (e.score.includes('**')) {
-    warn(`#${e.num}: Score has markdown bold: "${e.score}"`);
-    boldScores++;
+  let expectedTier;
+  if (scoreNum >= 4.0) expectedTier = 'Tier 1';
+  else if (scoreNum >= 3.5) expectedTier = 'Tier 2';
+  else expectedTier = 'Tier 3';
+
+  if (tier !== expectedTier) {
+    warn(`${filename}: Score ${scoreStr} → expected ${expectedTier}, got "${tier}"`);
+    tierMismatch++;
   }
 }
-if (boldScores === 0) ok('No bold in scores');
+if (tierMismatch === 0) ok('Tier/score assignments consistent');
+
+// --- Check 6: Source URLs ---
+let missingSources = 0;
+for (const { filename, fm } of entries) {
+  const source = (fm.source || '').trim();
+  if (!source || source === 'manual paste') continue;
+  if (!source.startsWith('http')) {
+    warn(`${filename}: Source "${source}" is not a valid URL`);
+    missingSources++;
+  }
+}
+if (missingSources === 0) ok('All source URLs valid');
 
 // --- Summary ---
 console.log('\n' + '='.repeat(50));
-console.log(`📊 Pipeline Health: ${errors} errors, ${warnings} warnings`);
+console.log(`📊 Pipeline Health: ${errors} errors, ${warnings} warnings (${entries.length} JD files)`);
 if (errors === 0 && warnings === 0) {
   console.log('🟢 Pipeline is clean!');
 } else if (errors === 0) {

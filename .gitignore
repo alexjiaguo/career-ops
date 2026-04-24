@@ -36,3 +36,26 @@ node_modules/
 .claude/memory/
 career-dashboard
 package-lock.json
+
+# Python (JobSpy)
+.venv/
+__pycache__/
+.env
+
+# Session logs
+session.log
+.sessions/
+
+# Local state and IDE
+.claude/
+.claude-flow/
+.vscode/
+.mcp.json
+
+# User-specific data (PII)
+cv.md
+10_JD_Pool/
+
+# Build outputs / Sub-apps
+web-board/node_modules/
+web-board/dist/

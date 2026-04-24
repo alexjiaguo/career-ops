@@ -23,15 +23,16 @@
      ┌──────▼──────────────────────────────────────────▼──────┐
      │                    Output Pipeline                      │
      │  ┌──────────┐  ┌────────────┐  ┌───────────────────┐  │
-     │  │ Report.md│  │  PDF (HTML  │  │ Tracker TSV       │  │
-     │  │ (A-F eval)│  │  → Puppeteer)│  │ (merge-tracker)  │  │
+     │  │ Report.md│  │  PDF (HTML  │  │ JD Frontmatter    │  │
+     │  │ (A-F eval)│  │  → Playwright)│  │ (status/score)   │  │
      │  └──────────┘  └────────────┘  └───────────────────┘  │
      └────────────────────────────────────────────────────────┘
                                │
-                    ┌──────────▼──────────┐
-                    │  data/applications.md │
-                    │  (canonical tracker)  │
-                    └──────────────────────┘
+                    ┌──────────▼───────────────┐
+                    │  Obsidian Vault           │
+                    │  10_JD_Pool/ (frontmatter │
+                    │  → Bases tracker)         │
+                    └──────────────────────────┘
 ```
 
 ## Evaluation Flow (Single Offer)
@@ -47,9 +48,9 @@
    - E: CV personalization plan
    - F: Interview prep (STAR stories)
 5. **Score**: Weighted average across 10 dimensions (1-5)
-6. **Report**: Save as `reports/{num}-{company}-{date}.md`
+6. **Write JD note**: Append evaluation output inline to the JD file in `{vault}/10_JD_Pool/`
 7. **PDF**: Generate ATS-optimized CV (`generate-pdf.mjs`)
-8. **Track**: Write TSV to `batch/tracker-additions/`, auto-merged
+8. **Track**: Update JD file frontmatter in `{vault}/10_JD_Pool/` — Obsidian Bases reads it automatically
 
 ## Batch Processing
 
@@ -66,44 +67,48 @@ batch-input.tsv    →  batch-runner.sh  →  N × claude -p workers
 Each worker is a headless Claude instance (`claude -p`) that receives the full `batch-prompt.md` as context. Workers produce:
 - Report .md
 - PDF
-- Tracker TSV line
+- JD frontmatter update (status, score, archetype)
 
 The orchestrator manages parallelism, state, retries, and resume.
 
 ## Data Flow
 
 ```
-cv.md                    →  Evaluation context
-article-digest.md        →  Proof points for matching
-config/profile.yml       →  Candidate identity
-portals.yml              →  Scanner configuration
-templates/states.yml     →  Canonical status values
-templates/cv-template.html → PDF generation template
+cv.md                         →  Evaluation context
+article-digest.md             →  Proof points for matching
+config/profile.yml            →  Candidate identity
+vault config + target lists   →  Discovery and scan inputs
+templates/cv-template.html    →  PDF generation template
 ```
 
 ## File Naming Conventions
 
-- Reports: `{###}-{company-slug}-{YYYY-MM-DD}.md` (3-digit zero-padded)
 - PDFs: `cv-candidate-{company-slug}-{YYYY-MM-DD}.pdf`
-- Tracker TSVs: `batch/tracker-additions/{id}.tsv`
+- JD files: `{Role} | {Company} | {Source}.md` (in vault `10_JD_Pool/`)
+- Tracker state: YAML frontmatter inside the JD file
 
 ## Pipeline Integrity
 
-Scripts maintain data consistency:
-
 | Script | Purpose |
 |--------|---------|
-| `merge-tracker.mjs` | Merges batch TSV additions into applications.md |
-| `verify-pipeline.mjs` | Health check: statuses, duplicates, links |
-| `dedup-tracker.mjs` | Removes duplicate entries by company+role |
-| `normalize-statuses.mjs` | Maps status aliases to canonical values |
-| `cv-sync-check.mjs` | Validates setup consistency |
+| `verify-pipeline.mjs` | Health check: validates JD file frontmatter (statuses, scores, fields, duplicates) |
+| `test-all.mjs` | Full test suite: syntax, data contract, modes, paths |
+| `doctor.mjs` | Pre-flight checks: Node version, Playwright, required files |
+
+> **Deprecated:** `normalize-statuses.mjs`, `dedup-tracker.mjs`, `merge-tracker.mjs` operated on the legacy `applications.md` tracker and are no longer used. Pipeline integrity is managed through Obsidian vault JD frontmatter.
+
+## Tracker: Obsidian Bases
+
+The application tracker is **not** a standalone file. The Obsidian Bases database at `00_Strategy/Tracker_2026.base` reads YAML frontmatter from `10_JD_Pool/*.md` files automatically.
+
+**Canonical status lifecycle:**
+`new` → `evaluated` → `applied` → `interviewing` → `offered` → `archived`; or `rejected`/`discarded` → `archived` at any point.
 
 ## Dashboard TUI
 
 The `dashboard/` directory contains a standalone Go TUI application that visualizes the pipeline:
 
-- Filter tabs: All, Evaluada, Aplicado, Entrevista, Top >=4, No Aplicar
+- Filter tabs: All, Evaluated, Applied, Interviewing, Top >=4, Discarded
 - Sort modes: Score, Date, Company, Status
 - Grouped/flat view
 - Lazy-loaded report previews

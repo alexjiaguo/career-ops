@@ -16,7 +16,7 @@ Claude Conductor (claude --chrome --dangerously-skip-permissions)
   ├─ Oferta 2: click siguiente, lee JD + URL
   │    └─► claude -p worker → report .md + PDF + tracker-line
   │
-  └─ Fin: merge tracker-additions → applications.md + resumen
+  └─ Fin: update JD frontmatter in vault + resumen
 ```
 
 Cada worker es un `claude -p` hijo con contexto limpio de 200K tokens. El conductor solo orquesta.
@@ -52,7 +52,7 @@ batch/
    f. Log a `logs/{report_num}-{id}.log`
    g. Chrome: volver atrás → siguiente oferta
 5. **Paginación**: Si no hay más ofertas → click "Next" → repetir
-6. **Fin**: Merge `tracker-additions/` → `applications.md` + resumen
+6. **Fin**: Update JD frontmatter in vault `10_JD_Pool/` from `tracker-additions/` + resumen
 
 ## Modo B: Script standalone
 

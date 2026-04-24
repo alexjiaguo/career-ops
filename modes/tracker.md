@@ -1,23 +1,21 @@
-# Modo: tracker — Tracker de Aplicaciones
+# Mode: tracker — Application Dashboard
 
-Lee y muestra `data/applications.md`.
+Reads JD files from the Obsidian vault's `10_JD_Pool/` directory and displays a dashboard.
 
-**Formato del tracker:**
+**Data source:** JD file YAML frontmatter in `{vault}/10_JD_Pool/`. The Obsidian Bases tracker at `00_Strategy/Tracker_2026.base` reads this frontmatter automatically.
+
+**Dashboard format:**
 ```markdown
-| # | Fecha | Empresa | Rol | Score | Estado | PDF | Report |
+| # | Date | Company | Role | Score | Status | Tier | Archetype |
 ```
 
-Estados posibles: `Evaluada` → `Aplicado` → `Respondido` → `Contacto` → `Entrevista` → `Oferta` / `Rechazada` / `Descartada` / `NO APLICAR`
+Canonical statuses: `new` → `evaluated` → `applied` → `interviewing` → `offered` / `rejected` / `discarded` → `archived`
 
-- `Aplicado` = el candidato envió su candidatura
-- `Respondido` = Un recruiter/empresa contactó y el candidato respondió (inbound)
-- `Contacto` = El candidato contactó proactivamente a alguien de la empresa (outbound, ej: LinkedIn power move)
+If the user asks to update a status, edit the frontmatter `status:` field in the corresponding JD file.
 
-Si el usuario pide actualizar un estado, editar la fila correspondiente.
-
-Mostrar también estadísticas:
-- Total de aplicaciones
-- Por estado
-- Score promedio
-- % con PDF generado
-- % con report generado
+Also show statistics:
+- Total JD files
+- Count by status
+- Average score
+- % with score assigned
+- % at each tier

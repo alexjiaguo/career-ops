@@ -13,13 +13,23 @@ These files contain your personal data, customizations, and work product. Update
 | `modes/_profile.md` | Your archetypes, narrative, negotiation scripts |
 | `article-digest.md` | Your proof points from portfolio |
 | `interview-prep/story-bank.md` | Your accumulated STAR+R stories |
-| `portals.yml` | Your customized company list |
-| `data/applications.md` | Your application tracker |
 | `data/pipeline.md` | Your URL inbox |
 | `data/scan-history.tsv` | Your scan history |
 | `reports/*` | Your evaluation reports |
 | `output/*` | Your generated PDFs |
-| `jds/*` | Your saved job descriptions |
+| `jds/*` | Your saved job descriptions (legacy) |
+
+**Obsidian vault files (also user layer):**
+| Path | Purpose |
+|------|---------|
+| `{vault}/10_JD_Pool/*.md` | JD files with YAML frontmatter (tracker source of truth) |
+| `{vault}/20_Tailored_CV/*` | Generated resumes |
+| `{vault}/40_Interviewing/*` | Interview prep materials |
+| `{vault}/99_The_Treasure_Vault/01_Career_Ops/config.yml` | Targeting config |
+| `{vault}/99_The_Treasure_Vault/01_Career_Ops/target-companies.yml` | Company list |
+| `{vault}/99_The_Treasure_Vault/01_Career_Ops/scan-history.tsv` | Scan dedup history |
+
+> **Note:** The legacy `data/applications.md` tracker is no longer used. The Obsidian Bases tracker at `00_Strategy/Tracker_2026.base` reads directly from JD file frontmatter in `10_JD_Pool/`.
 
 ## System Layer (safe to auto-update)
 
@@ -41,7 +51,9 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `modes/project.md` | Project evaluation instructions |
 | `modes/tracker.md` | Tracker instructions |
 | `modes/training.md` | Training evaluation instructions |
-| `modes/de/*` | German language modes |
+| `modes/de/*` | German language modes (deprecated — not updated for Obsidian-native) |
+| `modes/fr/*` | French language modes (deprecated — not updated for Obsidian-native) |
+| `modes/pt/*` | Portuguese language modes (deprecated — not updated for Obsidian-native) |
 | `CLAUDE.md` | Agent instructions |
 | `AGENTS.md` | Codex instructions |
 | `*.mjs` | Utility scripts |
