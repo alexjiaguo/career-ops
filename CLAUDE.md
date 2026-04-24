@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Origin
 
-This system is adapted from [santifer/career-ops](https://github.com/santifer/career-ops), customized for an Obsidian-native workflow with dynamic company discovery, APAC/China job board integration, and delegation to the user's own resume and interview prep skills.
+This system is adapted from [alexjiaguo/career-ops](https://github.com/alexjiaguo/career-ops), customized for an Obsidian-native workflow with dynamic company discovery, APAC/China job board integration, and delegation to the user's own resume and interview prep skills.
 
 ## Commands
 

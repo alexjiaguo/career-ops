@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime
 
-VAULT_PATH = '/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Life_OS/10_Projects/02_Job_Hunt_2026'
+VAULT_PATH = os.environ.get('OBSIDIAN_VAULT_PATH', './vault')
 JD_POOL = os.path.join(VAULT_PATH, '10_JD_Pool')
 
 ATS_TARGETS = [
